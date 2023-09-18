@@ -1,0 +1,6 @@
+name: PlayerStash
+main: dev.math3w.playerstash.PlayerStashPlugin
+version: 1.0
+author: _Math3w_
+description: If the player has no free slot in their inventory, the item will be stored in their "stash" which can be claimed later after the inventory is freed.
+api-version: "1.13"

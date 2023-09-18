@@ -1,0 +1,32 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+group 'dev.math3w'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+    maven { url = uri('https://hub.spigotmc.org/nexus/content/repositories/snapshots') }
+    maven { url = uri('https://oss.sonatype.org/content/groups/public/') }
+    maven { url = uri('https://repo.maven.apache.org/maven2/') }
+    maven { url = 'https://jitpack.io' }
+}
+
+ext {
+    versions = [
+            spigot: '1.20.1-R0.1-SNAPSHOT',
+    ]
+}
+
+dependencies {
+    compileOnly "org.spigotmc:spigot-api:${versions.spigot}"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
