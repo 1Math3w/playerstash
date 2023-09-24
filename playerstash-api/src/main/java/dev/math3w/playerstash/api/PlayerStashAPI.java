@@ -9,4 +9,9 @@ public interface PlayerStashAPI {
     GiveResult giveItem(Player player, ItemStack item);
 
     GiveResult giveItem(UUID playerUniqueId, ItemStack item);
+
+    enum GiveResult {
+        INVENTORY,
+        STASH
+    }
 }
