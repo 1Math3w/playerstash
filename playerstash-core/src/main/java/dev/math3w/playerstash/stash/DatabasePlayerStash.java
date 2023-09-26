@@ -15,18 +15,35 @@ import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class DatabasePlayerStash implements PlayerStash {
     private final DatabasePlayerStashManager manager;
     private final UUID uuid;
+    private final Map<Integer, ItemStack> items;
 
     public DatabasePlayerStash(DatabasePlayerStashManager manager, UUID uuid) {
         this.manager = manager;
         this.uuid = uuid;
+
+        items = new ConcurrentHashMap<>();
+        try (PreparedStatement statement = manager.getDatabase().getConnection().prepareStatement("SELECT * FROM playerstash_items WHERE player=?")) {
+            statement.setString(1, uuid.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    ItemStack item = deserializeItemStackBase64(resultSet.getString("item"));
+                    items.put(resultSet.getInt("id"), item);
+                }
+            } catch (IOException exception) {
+                throw new RuntimeException(exception);
+            }
+        } catch (SQLException exception) {
+            throw new RuntimeException(exception);
+        }
     }
 
     @Override
@@ -40,34 +57,25 @@ public class DatabasePlayerStash implements PlayerStash {
     }
 
     @Override
-    public CompletableFuture<List<ItemStack>> getItems() {
-        return CompletableFuture.supplyAsync(() -> {
-            try (PreparedStatement statement = manager.getDatabase().getConnection().prepareStatement("SELECT * FROM playerstash_items WHERE player=?")) {
-                statement.setString(1, uuid.toString());
-                try (ResultSet resultSet = statement.executeQuery()) {
-                    List<ItemStack> items = new ArrayList<>();
-                    while (resultSet.next()) {
-                        ItemStack item = deserializeItemStackBase64(resultSet.getString("item"));
-                        items.add(item);
-                    }
-                    return items;
-                } catch (IOException exception) {
-                    throw new RuntimeException(exception);
-                }
-            } catch (SQLException exception) {
-                throw new RuntimeException(exception);
-            }
-        });
+    public Collection<ItemStack> getItems() {
+        return items.values();
     }
 
     @Override
     public void addItem(ItemStack... items) {
-        CompletableFuture.runAsync(() -> {
+        Bukkit.getScheduler().runTaskAsynchronously(manager.getPlugin(), () -> {
             for (ItemStack item : items) {
-                try (PreparedStatement statement = manager.getDatabase().getConnection().prepareStatement("INSERT INTO playerstash_items (player, item) VALUES (?, ?)")) {
+                try (PreparedStatement statement = manager.getDatabase().getConnection().prepareStatement("INSERT INTO playerstash_items (player, item) VALUES (?, ?)", PreparedStatement.RETURN_GENERATED_KEYS)) {
                     statement.setString(1, uuid.toString());
                     statement.setString(2, serializeItemStackBase64(item));
                     statement.executeUpdate();
+                    try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                        if (generatedKeys.next()) {
+                            int id = generatedKeys.getInt(1);
+                            System.out.println("Newly inserted id: " + id);
+                            this.items.put(id, item);
+                        }
+                    }
                 } catch (SQLException exception) {
                     exception.printStackTrace();
                 }
@@ -82,42 +90,35 @@ public class DatabasePlayerStash implements PlayerStash {
         }
 
         return CompletableFuture.supplyAsync(() -> {
-            try (PreparedStatement statement = manager.getDatabase().getConnection().prepareStatement("SELECT * FROM playerstash_items WHERE player=?")) {
-                statement.setString(1, uuid.toString());
-                try (ResultSet resultSet = statement.executeQuery()) {
-                    int claimedItems = 0;
-                    while (resultSet.next()) {
-                        int id = resultSet.getInt("id");
-                        ItemStack item = deserializeItemStackBase64(resultSet.getString("item"));
+            int claimedItems = 0;
+            for (Map.Entry<Integer, ItemStack> itemEntry : items.entrySet()) {
+                int id = itemEntry.getKey();
+                ItemStack item = itemEntry.getValue();
 
-                        if (!Utils.hasFreeSlot(getPlayer())) break;
+                if (!Utils.hasFreeSlot(getPlayer())) break;
 
-                        CompletableFuture<Boolean> giveFuture = new CompletableFuture<>();
-                        Bukkit.getScheduler().runTask(manager.getPlugin(), () -> {
-                            getPlayer().getInventory().addItem(item);
-                            giveFuture.complete(true);
-                        });
-
-                        giveFuture.join();
-
-                        try (PreparedStatement removeStatement = manager.getDatabase().getConnection().prepareStatement("DELETE FROM playerstash_items WHERE id=?")) {
-                            removeStatement.setInt(1, id);
-                            removeStatement.executeUpdate();
-                        } catch (SQLException exception) {
-                            exception.printStackTrace();
-                        }
-
-                        claimedItems++;
-                    }
-
-                    return claimedItems;
-                } catch (IOException e) {
-                    e.printStackTrace();
+                this.items.remove(id);
+                try (PreparedStatement removeStatement = manager.getDatabase().getConnection().prepareStatement("DELETE FROM playerstash_items WHERE id=?")) {
+                    removeStatement.setInt(1, id);
+                    removeStatement.executeUpdate();
+                } catch (SQLException exception) {
+                    exception.printStackTrace();
                 }
-            } catch (SQLException exception) {
-                exception.printStackTrace();
+
+                CompletableFuture<Boolean> giveFuture = new CompletableFuture<>();
+                Bukkit.getScheduler().runTask(manager.getPlugin(), () -> {
+                    getPlayer().getInventory().addItem(item);
+                    giveFuture.complete(true);
+                });
+
+                giveFuture.join();
+                claimedItems++;
             }
-            return 0;
+
+            return claimedItems;
+        }).exceptionally(throwable -> {
+            throwable.printStackTrace();
+            return null;
         });
     }
 
