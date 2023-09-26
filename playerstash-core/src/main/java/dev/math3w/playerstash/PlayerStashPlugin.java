@@ -1,10 +1,12 @@
 package dev.math3w.playerstash;
 
 import dev.math3w.playerstash.api.PlayerStashAPI;
+import dev.math3w.playerstash.api.stash.PlayerStash;
 import dev.math3w.playerstash.api.stash.PlayerStashManager;
 import dev.math3w.playerstash.configs.configs.DatabaseConfig;
 import dev.math3w.playerstash.configs.configs.MessagesConfig;
 import dev.math3w.playerstash.stash.DatabasePlayerStashManager;
+import dev.math3w.playerstash.stash.StashNotificationManager;
 import dev.math3w.playerstash.utils.Utils;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -18,6 +20,7 @@ import java.util.concurrent.CompletableFuture;
 public final class PlayerStashPlugin extends JavaPlugin implements PlayerStashAPI {
     private PlayerStashManager playerStashManager;
     private MessagesConfig messagesConfig;
+    private StashNotificationManager notificationManager;
 
     @Override
     public void onEnable() {
@@ -29,6 +32,10 @@ public final class PlayerStashPlugin extends JavaPlugin implements PlayerStashAP
 
         playerStashManager = new DatabasePlayerStashManager(this, databaseConfig);
 
+        if (messagesConfig.isNotificationEnabled()) {
+            notificationManager = new StashNotificationManager(this);
+        }
+
         for (Player player : Bukkit.getOnlinePlayers()) {
             playerStashManager.createPlayerStash(player.getUniqueId());
         }
@@ -36,22 +43,22 @@ public final class PlayerStashPlugin extends JavaPlugin implements PlayerStashAP
 
     @Override
     public GiveResult giveItem(Player player, ItemStack item) {
-        return giveItem(player.getUniqueId(), item);
+        return giveItem(player, item, true);
     }
 
     @Override
-    public GiveResult giveItem(UUID playerUniqueId, ItemStack item) {
-        Player player = Bukkit.getPlayer(playerUniqueId);
-        if (player == null) {
-            throw new IllegalStateException("Player is not connected to the server");
-        }
-
+    public GiveResult giveItem(Player player, ItemStack item, boolean sendNotification) {
         if (Utils.canGiveItem(player, item)) {
             player.getInventory().addItem(item);
             return GiveResult.INVENTORY;
         }
 
-        playerStashManager.getPlayerStash(playerUniqueId).addItem(item);
+        PlayerStash playerStash = playerStashManager.getPlayerStash(player.getUniqueId());
+        playerStash.addItem(item).thenRun(() -> {
+            if (sendNotification) {
+                notificationManager.sendNotification(playerStash, player);
+            }
+        });
         return GiveResult.STASH;
     }
 
@@ -71,5 +78,9 @@ public final class PlayerStashPlugin extends JavaPlugin implements PlayerStashAP
 
     public PlayerStashManager getPlayerStashManager() {
         return playerStashManager;
+    }
+
+    public StashNotificationManager getNotificationManager() {
+        return notificationManager;
     }
 }

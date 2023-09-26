@@ -14,7 +14,7 @@ public interface PlayerStash {
 
     Collection<ItemStack> getItems();
 
-    void addItem(ItemStack... items);
+    CompletableFuture<Void> addItem(ItemStack... items);
 
     CompletableFuture<Integer> claimItems();
 }

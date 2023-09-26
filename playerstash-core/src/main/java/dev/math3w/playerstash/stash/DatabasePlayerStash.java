@@ -62,8 +62,8 @@ public class DatabasePlayerStash implements PlayerStash {
     }
 
     @Override
-    public void addItem(ItemStack... items) {
-        Bukkit.getScheduler().runTaskAsynchronously(manager.getPlugin(), () -> {
+    public CompletableFuture<Void> addItem(ItemStack... items) {
+        return CompletableFuture.runAsync(() -> {
             for (ItemStack item : items) {
                 try (PreparedStatement statement = manager.getDatabase().getConnection().prepareStatement("INSERT INTO playerstash_items (player, item) VALUES (?, ?)", PreparedStatement.RETURN_GENERATED_KEYS)) {
                     statement.setString(1, uuid.toString());
@@ -72,7 +72,6 @@ public class DatabasePlayerStash implements PlayerStash {
                     try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
                         if (generatedKeys.next()) {
                             int id = generatedKeys.getInt(1);
-                            System.out.println("Newly inserted id: " + id);
                             this.items.put(id, item);
                         }
                     }

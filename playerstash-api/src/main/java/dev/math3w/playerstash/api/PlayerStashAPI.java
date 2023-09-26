@@ -10,7 +10,7 @@ import java.util.concurrent.CompletableFuture;
 public interface PlayerStashAPI {
     GiveResult giveItem(Player player, ItemStack item);
 
-    GiveResult giveItem(UUID playerUniqueId, ItemStack item);
+    GiveResult giveItem(Player player, ItemStack item, boolean sendNotification);
 
     CompletableFuture<Integer> claimItems(UUID playerUniqueId);
 
