@@ -21,6 +21,8 @@ public class Utils {
         if (remainingAmount == 0) return true;
 
         for (int i = 0; i < inventory.getSize(); i++) {
+            if (i > 35) break;
+            
             ItemStack slotItem = inventory.getItem(i);
             if (slotItem != null && !slotItem.isSimilar(item)) continue;
 
