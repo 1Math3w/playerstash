@@ -3,6 +3,7 @@ package dev.math3w.playerstash;
 import dev.math3w.playerstash.api.PlayerStashAPI;
 import dev.math3w.playerstash.api.stash.PlayerStash;
 import dev.math3w.playerstash.api.stash.PlayerStashManager;
+import dev.math3w.playerstash.commands.PickupCommand;
 import dev.math3w.playerstash.configs.configs.DatabaseConfig;
 import dev.math3w.playerstash.configs.configs.MessagesConfig;
 import dev.math3w.playerstash.stash.DatabasePlayerStashManager;
@@ -35,6 +36,8 @@ public final class PlayerStashPlugin extends JavaPlugin implements PlayerStashAP
         if (messagesConfig.isNotificationEnabled()) {
             notificationManager = new StashNotificationManager(this);
         }
+
+        getCommand("pickupstash").setExecutor(new PickupCommand(this));
 
         for (Player player : Bukkit.getOnlinePlayers()) {
             playerStashManager.createPlayerStash(player.getUniqueId());
