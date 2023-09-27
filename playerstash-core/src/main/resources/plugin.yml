@@ -7,6 +7,10 @@ api-version: "1.13"
 commands:
   pickupstash:
     permission: "playerstash.pickup"
+  stashgive:
+    permission: "playerstash.give"
 permissions:
   playerstash.pickup:
     default: true
+  playerstash.give:
+    default: op

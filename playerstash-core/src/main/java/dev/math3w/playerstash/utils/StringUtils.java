@@ -11,6 +11,10 @@ import java.util.regex.Pattern;
 public class StringUtils {
     private static final Pattern hexColorPattern = Pattern.compile("#[a-fA-F0-9]{6}");
 
+    private StringUtils() {
+        throw new IllegalStateException("Utility class cannot be instantiated");
+    }
+
     public static TextComponent colorizeComponent(String message) {
         message = ChatColor.translateAlternateColorCodes('&', message);
 
