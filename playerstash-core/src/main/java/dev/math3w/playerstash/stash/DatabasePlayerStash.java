@@ -94,7 +94,7 @@ public class DatabasePlayerStash implements PlayerStash {
                 int id = itemEntry.getKey();
                 ItemStack item = itemEntry.getValue();
 
-                if (!Utils.hasFreeSlot(getPlayer())) break;
+                if (!Utils.canGiveItem(getPlayer(), item)) continue;
 
                 this.items.remove(id);
                 try (PreparedStatement removeStatement = manager.getDatabase().getConnection().prepareStatement("DELETE FROM playerstash_items WHERE id=?")) {
