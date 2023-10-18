@@ -67,6 +67,23 @@ public final class PlayerStashPlugin extends JavaPlugin implements PlayerStashAP
         return GiveResult.STASH;
     }
 
+
+    @Override
+    public GiveResult giveItem(UUID playerUniqueId, ItemStack item, boolean sendNotification) {
+        Player player = Bukkit.getPlayer(playerUniqueId);
+        if (player != null) {
+            return giveItem(player, item, sendNotification);
+        }
+
+        playerStashManager.createPlayerStash(playerUniqueId).thenAccept(playerStash ->
+                playerStash.addItem(item).thenRun(() -> {
+                    if (Bukkit.getPlayer(playerUniqueId) == null) {
+                        playerStashManager.removeCachedPlayerStash(playerUniqueId);
+                    }
+                }));
+        return GiveResult.STASH;
+    }
+
     @Override
     public CompletableFuture<Integer> claimItems(UUID playerUniqueId) {
         return playerStashManager.getPlayerStash(playerUniqueId).claimItems();

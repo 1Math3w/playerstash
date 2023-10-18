@@ -29,6 +29,17 @@ public interface PlayerStashAPI {
     GiveResult giveItem(Player player, ItemStack item, boolean sendNotification);
 
     /**
+     * Gives an item to a player with the option to send a notification. If the player's inventory is full,
+     * the item will be added to their stash. If the player is offline, the item will be added to their stash.
+     *
+     * @param playerUniqueId   The unique identifier of the player to give the item to.
+     * @param item             The ItemStack to give to the player.
+     * @param sendNotification Whether to send a notification if the player is online.
+     * @return The result of the give operation, either INVENTORY or STASH. If the player is offline it will always be STASH
+     */
+    GiveResult giveItem(UUID playerUniqueId, ItemStack item, boolean sendNotification);
+
+    /**
      * Asynchronously claims items from a player's stash and adds them to their inventory.
      *
      * @param playerUniqueId The unique ID of the player.
